@@ -30,11 +30,13 @@ https://docs.mongodb.com/manual/tutorial/install-mongodb-on-amazon/
 https://eladnava.com/deploy-a-highly-available-mongodb-replica-set-on-aws/
 
 <h3>Other References:</h3>
+<pre>
 [1]https://towardsdatascience.com/cap-theorem-and-distributed-database-management-systems-5c2be977950e
 [2]http://blog.nahurst.com/visual-guide-to-nosql-systems
 [3]http://robertgreiner.com/2014/08/cap-theorem-revisited/
 [4]https://queue.acm.org/detail.cfm?id=1394128
 [5]https://echidna.co/blog/scalable-commerce-nosql-databases/
+</pre>
 
 <h2>Summary</h2>
 <pre>
