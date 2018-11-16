@@ -204,7 +204,7 @@ This will take few moments to make all the nodes in the cluster valid. To remove
 	
 	sudo riak-admin cluster leave riak@<ip address of the node which was choosen to join>
 
-First I tested whether the nodes are able to talk with each other. So i created a bucket "food" with simple key "pizza" for value "favorite"
+First I tested whether the nodes are able to talk with each other. So i created a bucket "food" with simple key "favorite" for value "pizza"
 
 	curl -v -XPUT -d "pizza" \
     http://10.0.1.218:8098/buckets/food/keys/favorite
@@ -248,13 +248,13 @@ Next task was to create a test network partition. The inter-node communication e
 
 	Create
 
-I changed the security groups of all riak instances in AZ us-west-1c to Riak Personal Project and riak instances in AZ us-west-1a to Riak Personal Project SG2. Thus only instances in the same subnet can talk with each other. I stopped and started my riak nodes again. Upon performing sudo riak-admin cluster status from Riak1 I could see that Riak4 and Riak5 nodes were down. I updated the key for value favorite to "salad" from Riak1.
+I changed the security groups of all riak instances in AZ us-west-1c to Riak Personal Project and riak instances in AZ us-west-1a to Riak Personal Project SG2. Thus only instances in the same subnet can talk with each other. I stopped and started my riak nodes again. Upon performing sudo riak-admin cluster status from Riak1 I could see that Riak4 and Riak5 nodes were down. I updated the value for key favorite to "salad" from Riak1.
 
 	curl -v -XPUT -d "salad" \
     http://10.0.1.218:8098/buckets/food/keys/favorite
 
 Upon GET, I got favorite as "salad" from Riak1, Riak2 and Riak3 as they were all in same subnet. Riak4 and Riak5 showed me stale data, it showed "pizza" as favorite. Thus the nodes were Available with inconsistent data.
-Next, to check how nodes choose the latest data, I changed the key for favorite as "pasta" from Riak4.
+Next, to check how nodes choose the latest data, I changed the value for favorite as "pasta" from Riak4.
 
 	curl -v -XPUT -d "pasta" \
     http://10.0.3.50:8098/buckets/food/keys/favorite
@@ -268,4 +268,4 @@ Upon GET, I got favorite as "pasta" from Riak4 and Riak5 as they were in same su
 	Port Range : 8098 ; Source : 10.0.3.0/24 , 10.0.1.0/24
 	Port Range : 6000 - 7999 ; Source : 10.0.3.0/24 , 10.0.1.0/24
 
-After this change, **curl -i http://<ip_address_of_riak_node>:8098/buckets/food/keys/favorite** gave me "pasta" in all the nodes. Thus, during network recovery, all the nodes took the latest key for favorite and became consistent in their answers.
+After this change, **curl -i http://<ip_address_of_riak_node>:8098/buckets/food/keys/favorite** gave me "pasta" in all the nodes. Thus, during network partition recovery, all the nodes took the latest key for favorite and became consistent in their answers.
