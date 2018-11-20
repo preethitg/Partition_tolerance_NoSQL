@@ -268,4 +268,169 @@ Upon GET, I got favorite as "pasta" from Riak4 and Riak5 as they were in same su
 	Port Range : 8098 ; Source : 10.0.3.0/24 , 10.0.1.0/24
 	Port Range : 6000 - 7999 ; Source : 10.0.3.0/24 , 10.0.1.0/24
 
-After this change, **curl -i http://<ip_address_of_riak_node>:8098/buckets/food/keys/favorite** gave me "pasta" in all the nodes. Thus, during network partition recovery, all the nodes took the latest key for favorite ie, the lastest write and became consistent in their answers.
+After this change, **curl -i http://<ip_address_of_riak_node>:8098/buckets/food/keys/favorite** gave me "pasta" in all the nodes. Thus, during network partition recovery, all the nodes took the latest key for favorite ie, the last write and became consistent in their answers.
+
+## Task 2 - Testing VPC Peering
+
+As Professor told us to use VPC Peering for our Team Project for connecting multiple VPCs together, I researched about VPC Peering and tried using that for Personal Project. VPC Peering is a network connection between multiple VPCs across region which enables to route traffic between them using Private IPv4 addresses. AWS allows VPC peering with VPCs in same account or in another AWS account. 
+
+References
+
+	https://docs.aws.amazon.com/vpc/latest/peering/what-is-vpc-peering.html
+	https://docs.aws.amazon.com/vpc/latest/peering/vpc-peering-basics.html
+	https://docs.aws.amazon.com/vpc/latest/peering/vpc-peering-routing.html
+	https://docs.aws.amazon.com/vpc/latest/peering/vpc-peering-basics.html#vpc-peering-limitations
+
+After going through the references, I started to work on my VPC peering connection. From the VPC Peering Limitation, I understood that AWS blocks VPC Peering with overlapping IPv4 CIDR blocks. So I created two VPCs with IPv4 CIDR blocks 11.0.0.0/16 and 12.0.0.0/16. Iam creating VPCs in same region.
+
+	In AWS Management Console, Click on VPC under Networking & Content Delivery.
+	Use Launch VPC Wizard from VPC dashboard to create a new VPC
+
+	VPC #1
+
+	Select VPC with Private and Public Subnets as we need both type of subnets for the project.
+	IPv4 CIDR block: 11.0.0.0/16
+	VPC name: cmpe281-personal-project-1
+	Public subnet's IPv4 CIDR: 11.0.0.0/24
+	Availability Zone: No Preference
+	Private subnet's IPv4 CIDR: 11.0.1.0/24
+	Availability Zone: No Preference
+
+	Click on "Use a NAT instance instead" option to create a NAT instance with free tier limit.
+	Instance type: t2.micro
+	Key pair name: cmpe281-us-west-1
+
+	Keep the rest as default and click in Create VPC.
+
+	VPC #2
+	
+	Select VPC with Private and Public Subnets as we need both type of subnets for the project.
+	IPv4 CIDR block: 12.0.0.0/16
+	VPC name: cmpe281-personal-project-peer
+	Public subnet's IPv4 CIDR: 12.0.0.0/24
+	Availability Zone: No Preference
+	Private subnet's IPv4 CIDR: 12.0.1.0/24
+	Availability Zone: No Preference
+
+	Click on "Use a NAT instance instead" option to create a NAT instance with free tier limit.
+	Instance type: t2.micro
+	Key pair name: cmpe281-us-west-1
+
+	Keep the rest as default and click in Create VPC.
+
+Create VPC Peering
+
+	To create a VPC peering connection, choose Peering Connection from VPC Dashboard.
+	Click on Create Peering Connection.
+
+	Peering connection name tag : Personal Project
+	VPC (Requester) : cmpe281-personal-project-1
+	Account : My Account
+	Region : This region (us-west-1)
+	VPC (Accepter) : cmpe281-personal-project-peer
+	Create Peering Connection.
+
+A VPC peering comes to effect only if both the Accepter VPC accepts the Peering Connection instantiated by Requester VPC. 
+
+	To accept VPC peering, Goto Peering Connection from VPC Dashboard.
+	Select the new peering connection and Click on Actions -> Accept Request.
+
+This creates a Peering Connection tag. Only creating a VPC peering connection will not enable traffic between the instances in VPCs. We have to change the routing table of the various subnets involved in the peering connection to accept traffic from other VPC CIDR blocks. From the above VPC creation, we have a Public subnet and a Private subnet in each VPC. The MongoDB cluster which has to created as part of the personal project will reside in the private subnets of these 2 VPCs. Therefore, we have to change the routing tables of all the 4 subnets involved to enable traffic routes from the private subnets in other VPC.
+
+Goto VPC Dashboard and choose Route table option.
+Add the following in the routing tables.
+
+<b>cmpe281-personal-project-peer : Public and Private subnets</b>
+	
+	Destination: 11.0.0.0/16. (CIDR block of VPC 1)
+	Target : pcx-********* (Peering Connection tag)
+
+<b>cmpe281-personal-project-1 : Public and Private subnets</b>	
+
+	Destination: 12.0.0.0/16. (CIDR block of VPC 1)
+	Target : pcx-********* (Peering Connection tag)
+
+After the routing tables are changed, create a public instance (jumpbox) and a private instance in each VPC.
+
+<b>Configuration of Public instances</b>
+
+	Goto AWS Console. Under Compute click in EC2
+	From EC2 dashboard choose Instances
+	Launch instance
+
+	AMI : Amazon Linux AMI 2018.03.0 (HVM)
+	Type: t2.micro
+	Network : cmpe281-personal-project-1 / cmpe281-personal-project-peer
+	Subnet : Public subnet
+	Auto-assign Public IP : Enable
+	Keep everything else as default in that page. Click Next
+
+	Keep default storage
+	No tags
+	Configure Security Group
+	Choose option : Create a Security group
+	Security group name : Jumpbox
+	Description : SG for Jumbox
+	VPC : cmpe281-personal-project-1 / cmpe281-personal-project-peer
+
+	In Inbound Security group rules, Add new rules
+	Type : SSH ; Port : 22 ; Source : Anywhere
+	Type : HTTP ; Port : 80 ; Source : Anywhere
+	Type : HTTPS ; Port : 443 ; Source : Anywhere
+
+Initially, while creating private instances, I opened only SSH port and HTTP port for inbound traffic. But the private instances were not able to talk with each other. I went through some AWS documentation and youtube videos and found out that we have to enable "All ICMP - IPv4" from the other CIDR block of other private instance we want to connect with. Thus the final configuration for private instances are:
+
+<b>Configuration of Private instances</b>
+
+	Goto AWS Console. Under Compute click in EC2
+	From EC2 dashboard choose Instances
+	Launch instance
+
+	AMI : Amazon Linux AMI 2018.03.0 (HVM)
+	Type: t2.micro
+	Network : cmpe281-personal-project-1 / cmpe281-personal-project-peer
+	Subnet : Private subnet
+	Auto-assign Public IP : Disable
+
+	Keep default storage
+	No tags
+	Configure Security Group
+	Choose option : Create a Security group
+	Security group name : Private-SG
+	Description : SG for private instances
+	VPC : cmpe281-personal-project-1 / cmpe281-personal-project-peer
+
+	For security group in cmpe281-personal-project-1,
+	In Inbound Security group rules, Add new rules
+	Type : SSH ; Port : 22 ; Source : 11.0.0.0/16 , 12.0.0.0/16
+	Type : All ICMP - IPv4 ; Source : 12.0.1.0/24
+
+	For security group in cmpe281-personal-project-peer,
+	In Inbound Security group rules, Add new rules
+	Type : SSH ; Port : 22 ; Source : 11.0.0.0/16 , 12.0.0.0/16
+	Type : All ICMP - IPv4 ; Source : 11.0.1.0/24	
+
+After creating instances, ssh into both the jumpbox public instances
+
+	ssh -i cmpe281-us-west-1.pem ec2-user@54.153.127.96
+	ssh -i cmpe281-us-west-1.pem ec2-user@52.53.125.40
+
+In order to connect to private instances, move the key-pair to jumpbox
+
+	scp -i cmpe281-us-west-1.pem cmpe281-us-west-1.pem ec2-user@<public IP>:/tmp
+	mv /tmp/cmpe281-us-west-1.pem .
+
+Connect to respective private instances
+
+	ssh -i cmpe281-us-west-1.pem ec2-user@11.0.1.156
+	ssh -i cmpe281-us-west-1.pem ec2-user@12.0.1.160
+
+From one private instance, ping the other private instance to check if the private instances from both VPCs are able to talk with each other
+
+	ping 11.0.1.156
+	ping 12.0.1.160
+
+<h2>Summary</h2>
+
+	Setup Riak cluster and performed network partitioning to test the Partition Tolerance of AP system
+	Setup VPC peering connection to use the same to test the Partition Tolerance of CP system next week.
