@@ -434,3 +434,178 @@ From one private instance, ping the other private instance to check if the priva
 
 	Setup Riak cluster and performed network partitioning to test the Partition Tolerance of AP system
 	Setup VPC peering connection to use the same to test the Partition Tolerance of CP system next week.
+
+# Week 3
+
+## Task 2 - CP partition tolerance - MongoDB
+
+MongoDB is a CP system. ie, under network partition, MongoDB will be partition tolerant and chooses consistency over availability.
+
+For testing the Partition Tolerance of MongoDB, I created a cluster of 5 nodes using the mongo-ami that was created as part of Lab4. Out of the 5 nodes, 3 nodes were created in VPC cmpe281-personal-project-1 (AZ us-west-1c) and 2 nodes in VPC cmpe281-personal-project-peer (AZ us-west-1a). The two VPCs are connected with each other using VPC peering connection (Demonstrated in Week 2). 
+
+I have used the same jumpbox I created in Week 2 (for VPC peering test) to connect with the private mongo instances. MongoDB uses port 27017 for communication. So I changed the security group "Private-SG" for both the VPCs to add new inbound rule for mongo communication.
+
+	Goto AWS Console. Under Compute click in EC2
+	From EC2 dashboard choose Security Groups
+	Click on "Private-SG" under VPC cmpe281-personal-project-1 / VPC cmpe281-personal-project-peer
+
+	Click on Actions->Edit inbound rules . Add the follwing in each Security group
+	Port range : 27017 ; Source : 11.0.1.0/24 , 12.0.1.0/24
+
+These changes will help mongo nodes to communicate with each other. Next create 5 private instance, 3 in VPC cmpe281-personal-project-1  and 2 in VPC cmpe281-personal-project-peer.
+
+	Goto AWS Console. Under Compute click in EC2
+	From EC2 dashboard choose Instances
+	Launch instance
+
+	Goto My AMIs. Select mongo-ami (Created in Lab4)
+	Type: t2.micro
+	Network : cmpe281-personal-project-1 / cmpe281-personal-project-peer
+	Subnet : Private subnet
+	Auto-assign Public IP : Disable
+
+	Keep default storage
+	No tags
+	Configure Security Group
+	Select an existing Security Group : Private-SG
+	Review and Launch
+
+After this step, I had 5 private instances:
+
+	11.0.1.234 mongo_1
+	11.0.1.29 mongo_2
+	11.0.1.106 mongo_3
+	12.0.1.177 mongo_4
+	12.0.1.75 mongo_5
+
+ssh into jumpbox in different VPCs to access the respective private instances. 
+
+	ssh -i cmpe281-us-west-1.pem ec2-user@<public IP of Jumpbox>
+
+As the jumpbox already has the key-pair (moved during VPC peering test), we can directly connect to private mongo instances
+
+	ssh -i cmpe281-us-west-1.pem ubuntu@11.0.1.234   //Jumpbox(cmpe281-personal-project-1)
+	ssh -i cmpe281-us-west-1.pem ubuntu@11.0.1.29   //Jumpbox(cmpe281-personal-project-1)
+	ssh -i cmpe281-us-west-1.pem ubuntu@11.0.1.106   //Jumpbox(cmpe281-personal-project-1)
+	ssh -i cmpe281-us-west-1.pem ubuntu@12.0.1.177   //Jumpbox(cmpe281-personal-project-peer)
+	ssh -i cmpe281-us-west-1.pem ubuntu@12.0.1.75   //Jumpbox(cmpe281-personal-project-peer)
+
+Inorder to avoid confusion and for easy readability, I changed the hostname of the mongo instances to mongo_1, mongo_2, mongo_3, mongo_4 and mongo_5
+
+	sudo hostnamectl set-hostname <hostname>
+	sudo reboot
+
+The mongo-ami created during Lab4 was configured to create a replicaSet with name "cmpe281". Thus to initiate the replica set, select any one of the mongo instances and perform the following.
+
+	mongo
+	rs.initiate( {
+   		_id : "cmpe281",
+	         members: [
+	              { _id: 0, host: "11.0.1.234:27017" },
+	              { _id: 1, host: "11.0.1.29:27017" },
+	              { _id: 2, host: "11.0.1.106:27017" },
+	              { _id: 3, host: "12.0.1.177:27017" },
+	              { _id: 4, host: "12.0.1.75:27017" },
+	           ]
+	})
+
+After initiation, the nodes decide and elect one instance as Master /Primary. Writes can be done only to Primary node. 
+
+	In order to check which node is primary, type
+	rs.status()
+
+rs.status() is very useful in understanding which nodes are Primary and Secondary. Its also useful in understanding the health condition of the nodes, whether it is reachable or not.
+
+After the initiation, mongo_1 was elected as Primary node. The default MongoDB configuration is open for anyone to access the databases. Thus I created an admin user from mongo_1 to access the database.
+
+	mongo
+	use admin
+	db.createUser( {
+		user: <username>,
+		pwd: <password>,
+		roles: [{ role: "root", db: "admin" }]
+	}); 
+
+After this, login to nodes as Admin
+
+	mongo -u <username> -p <password> --authenticationDatabase admin
+
+Inorder to test for partition tolerance, create a db "personal_proj" and a collection "personal_proj" from Primary
+
+	use personal_proj
+
+	db.personal_proj.insert({
+	    "name" : "Preethi",
+	    "birth" : ISODate("1994-08-10T05:00:00Z"),
+	    "country" : "India",
+	    "joined" : "Spring 2018"
+	})
+
+	db.personal_proj.find()
+
+In order to test if the data has been successfully replicated in secondary nodes, we have to allow query from secondary/replica nodes.
+
+	rs.slaveOk()
+	use personal_proj
+	db.personal_proj.find()
+
+The data was replicated correctly and all secondary nodes showed record for "Preethi". Next i created a network partition by deleting the VPC peering connection.
+
+	In AWS Management Console, Click on VPC under Networking & Content Delivery.
+	Choose Peering Connection from VPC Dashboard.
+	Select "Personal Project" and Delete the connection.
+
+Deleting the Peering connection disconnects the private instances from one VPC with the other. Thus mongo_4 and mongo_5 becomes unreachable from mongo_1, mongo_2 and mongo_3. The new primary may or maynot change. After the Peering connection is deleted, check the status of the replica set.
+
+	Login to mongo_1 as admin and check rs.status()
+	mongo -u <username> -p <password> --authenticationDatabase admin
+	rs.status()
+
+mongo_1 still remained the "Master"/Primary node. Upon rs.status(), I could see that mongo_4 and mongo_5 were unreachable as they both belong to VPC cmpe281-personal-project-peer. Upong checking the status from mongo_4 , I could see that mongo_1, mongo_2 and mongo_3 were unreachable from mongo_4. mongo_5 was still reachable to mongo_4 as they are in one VPC.
+
+MongoDB follows Master-Slave configuration. Any writes has to be done to Master node. I inserted a new record in personal_proj collection from Primary node.
+
+	use personal_proj
+	
+	db.personal_proj.insert({
+	    "name" : "Anitha",
+	    "birth" : ISODate("1986-10-01T05:00:00Z"),
+	    "country" : "India",
+	    "joined" : "Fall 2012"
+	}) 
+
+	db.personal_proj.find()
+
+find() showed the records for "Preethi" and "Anitha" as expected. As mongo_1 (Primary) can reach to mongo_2 and mongo_3, the new record got replicated in both the systems. Since mongo_4 and mongo_5 were unreachable from Primary node, the record did not get replicated and db.personal_proj.find() gave a stale data with just the record of "Preethi" from mongo_4 and mongo_5.
+
+Since writes can be only done to Master node, there is no concept of "last write" in Mongo. Whatever is updated to Master node will get replicated in Slave node. Inorder to end the network partition, I created a new VPC peering connection between VPC cmpe281-personal-project-peer and cmpe281-personal-project-1.
+
+	Choose Peering Connection from VPC Dashboard.
+	Click on Create Peering Connection.
+
+	Peering connection name tag : Personal Project
+	VPC (Requester) : cmpe281-personal-project-1
+	Account : My Account
+	Region : This region (us-west-1)
+	VPC (Accepter) : cmpe281-personal-project-peer
+	Create Peering Connection.
+
+	To accept VPC peering, Goto Peering Connection from VPC Dashboard.
+	Select the new peering connection and Click on Actions -> Accept Request.
+
+	Choose Route table option from VPC Dashboard to connect the instances of two VPCs.
+	Add the following in the routing tables.
+
+cmpe281-personal-project-peer : Public and Private subnets
+	
+	Destination: 11.0.0.0/16. (CIDR block of VPC 1)
+	Target : pcx-********* (Peering Connection tag)
+
+cmpe281-personal-project-1 : Public and Private subnets
+
+	Destination: 12.0.0.0/16. (CIDR block of VPC 1)
+	Target : pcx-********* (Peering Connection tag)
+
+Creating Peering connection enabled the Master node to talk with all the Slave nodes. 
+
+rs.status() from Primary node, mongo_4 and mongo_5 showed all the nodes as reachable and healthy. db.personal_proj.find() from mongo_4 showed the new record for "Anitha" along with "Preethi" and became consistent with the Primary node. Thus, under network partition, nodes unreachable to Primary node shows stale data. After partition recovery, the unreachable nodes becomes eventually consistent and shows the updated data.
