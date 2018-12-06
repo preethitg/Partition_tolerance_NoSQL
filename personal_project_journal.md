@@ -274,6 +274,12 @@ After this change, **curl -i http://<ip_address_of_riak_node>:8098/buckets/food/
 
 ![Riak Design Diagram](riak_db.png)
 
+### Challenges Faced
+
+- Understand ports that has to be opened for inter-node communication and the uses for the same.
+- Riak nodes were unreachable without changing the riak.conf and app.config files. 
+
+
 ## Task 2 - Testing VPC Peering
 
 As Professor told us to use VPC Peering for our Team Project for connecting multiple VPCs together, I researched about VPC Peering and tried using that for Personal Project. VPC Peering is a network connection between multiple VPCs across region which enables to route traffic between them using Private IPv4 addresses. AWS allows VPC peering with VPCs in same account or in another AWS account. 
@@ -618,3 +624,6 @@ rs.status() from Primary node, mongo_4 and mongo_5 showed all the nodes as reach
 
 ![Mongo Design Diagram](mongo.png)
 
+### Challenges Faced
+
+- Understand the concept of VPC peering and related route table changes. Experimentation helped a to get a better understanding.
