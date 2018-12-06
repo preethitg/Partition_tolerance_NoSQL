@@ -270,6 +270,10 @@ Upon GET, I got favorite as "pasta" from Riak4 and Riak5 as they were in same su
 
 After this change, **curl -i http://<ip_address_of_riak_node>:8098/buckets/food/keys/favorite** gave me "pasta" in all the nodes. Thus, during network partition recovery, all the nodes took the latest key for favorite ie, the last write and became consistent in their answers.
 
+**Riak DB Design Diagram**
+
+![Riak Design Diagram](riak_db.png)
+
 ## Task 2 - Testing VPC Peering
 
 As Professor told us to use VPC Peering for our Team Project for connecting multiple VPCs together, I researched about VPC Peering and tried using that for Personal Project. VPC Peering is a network connection between multiple VPCs across region which enables to route traffic between them using Private IPv4 addresses. AWS allows VPC peering with VPCs in same account or in another AWS account. 
@@ -609,3 +613,8 @@ cmpe281-personal-project-1 : Public and Private subnets
 Creating Peering connection enabled the Master node to talk with all the Slave nodes. 
 
 rs.status() from Primary node, mongo_4 and mongo_5 showed all the nodes as reachable and healthy. db.personal_proj.find() from mongo_4 showed the new record for "Anitha" along with "Preethi" and became consistent with the Primary node. Thus, under network partition, nodes unreachable to Primary node shows stale data. After partition recovery, the unreachable nodes becomes eventually consistent and shows the updated data.
+
+**Mongo DB Design Diagram**
+
+![Mongo Design Diagram](mongo.png)
+
