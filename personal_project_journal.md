@@ -627,3 +627,12 @@ rs.status() from Primary node, mongo_4 and mongo_5 showed all the nodes as reach
 ### Challenges Faced
 
 - Understand the concept of VPC peering and related route table changes. Experimentation helped a to get a better understanding.
+
+## Mongo CP system test
+- How does the system function during normal mode (i.e. no partition)
+	Mongo uses master-slave architecture for data replication. In Mongo, write takes place only in master or primary node and the data is replicated in all the secondary nodes. Thus, any data written to primary can be immediatly read from primary to get a quick and consistent value. Mongo does not allow read from secondary by default. Thus, to read from secondary, we have to perform rs.statusOk() command.
+	
+- What happens to the master node during a partition? 
+	During a network partition or even while starting mongo after stopping it in aws, election of primary takes place. The new primary can be our old primary itself , or some other node. It's all decided in runtime. To check which node is master node, we can perform rs.statusOk() form any one of the mongo instances
+- Can stale data be read from a slave node during a partition?
+- What happens to the system during partition recovery?
