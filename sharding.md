@@ -26,6 +26,10 @@ Config server: 27019
 * shard2 cluster with 3 replicas all in AZ us-west-1a
 * mongos instance.
 
+## Design
+
+![Sharding architecture](sharding.png)
+
 ## Setup
 
 ### Configuration of Public instance
