@@ -311,7 +311,9 @@ Now I closed the partition by changing both security group rules to:
 
 After this change, **curl -i http://<ip_address_of_riak_node>:8098/buckets/food/keys/favorite** gave me "pasta" in all the nodes. Thus, during network partition recovery, all the nodes took the latest key for favorite ie, the last write and became consistent in their answers.
 
+![Riak Design Diagram](20.png)
 
+![Riak Design Diagram](21.png)
 
 
 **Riak DB Design Diagram**
