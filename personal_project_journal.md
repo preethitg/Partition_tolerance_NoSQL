@@ -572,7 +572,7 @@ After initiation, the nodes decide and elect one instance as Master /Primary. Wr
 
 rs.status() is very useful in understanding which nodes are Primary and Secondary. Its also useful in understanding the health condition of the nodes, whether it is reachable or not.
 
-After the initiation, mongo_1 was elected as Primary node. The default MongoDB configuration is open for anyone to access the databases. Thus I created an admin user from mongo_1 to access the database.
+After the initiation, mongo_5 was elected as Primary node. The default MongoDB configuration is open for anyone to access the databases. Thus I created an admin user from mongo_5 to access the database.
 
 	mongo
 	use admin
@@ -586,24 +586,24 @@ After this, login to nodes as Admin
 
 	mongo -u <username> -p <password> --authenticationDatabase admin
 
-Inorder to test for partition tolerance, create a db "personal_proj" and a collection "personal_proj" from Primary
+Inorder to test for partition tolerance, create a db "personal_proj_demo" and a collection "personal_proj_demo" from Primary
 
-	use personal_proj
+	use personal_proj_demo
 
-	db.personal_proj.insert({
+	db.personal_proj_demo.insert({
 	    "name" : "Preethi",
-	    "birth" : ISODate("1994-08-10T05:00:00Z"),
+	    "birth" : ISODate("1980-08-16T05:00:00Z"),
 	    "country" : "India",
-	    "joined" : "Spring 2018"
-	})
+	    "joined" : "Fall 2016"
+	}) 
 
-	db.personal_proj.find()
+	db.personal_proj_demo.find()
 
 In order to test if the data has been successfully replicated in secondary nodes, we have to allow query from secondary/replica nodes.
 
 	rs.slaveOk()
-	use personal_proj
-	db.personal_proj.find()
+	use personal_proj_demo
+	db.personal_proj_demo.find()
 
 The data was replicated correctly and all secondary nodes showed record for "Preethi". Next i created a network partition by deleting the VPC peering connection.
 
@@ -617,22 +617,22 @@ Deleting the Peering connection disconnects the private instances from one VPC w
 	mongo -u <username> -p <password> --authenticationDatabase admin
 	rs.status()
 
-mongo_1 still remained the "Master"/Primary node. Upon rs.status(), I could see that mongo_4 and mongo_5 were unreachable as they both belong to VPC cmpe281-personal-project-peer. Upong checking the status from mongo_4 , I could see that mongo_1, mongo_2 and mongo_3 were unreachable from mongo_4. mongo_5 was still reachable to mongo_4 as they are in one VPC.
+mongo_3 got elected as the "Master"/Primary node. Upon rs.status(), I could see that mongo_4 and mongo_5 were unreachable as they both belong to VPC cmpe281-personal-project-peer. Upong checking the status from mongo_4 , I could see that mongo_1, mongo_2 and mongo_3 were unreachable from mongo_4. mongo_5 was still reachable to mongo_4 as they are in one VPC.
 
 MongoDB follows Master-Slave configuration. Any writes has to be done to Master node. I inserted a new record in personal_proj collection from Primary node.
 
-	use personal_proj
+	use personal_proj_demo
 	
-	db.personal_proj.insert({
+	db.personal_proj_demo.insert({
 	    "name" : "Anitha",
-	    "birth" : ISODate("1986-10-01T05:00:00Z"),
+	    "birth" : ISODate("1980-08-16T05:00:00Z"),
 	    "country" : "India",
-	    "joined" : "Fall 2012"
+	    "joined" : "Fall 2014"
 	}) 
 
-	db.personal_proj.find()
+	db.personal_proj_demo.find()
 
-find() showed the records for "Preethi" and "Anitha" as expected. As mongo_1 (Primary) can reach to mongo_2 and mongo_3, the new record got replicated in both the systems. Since mongo_4 and mongo_5 were unreachable from Primary node, the record did not get replicated and db.personal_proj.find() gave a stale data with just the record of "Preethi" from mongo_4 and mongo_5.
+find() showed the records for "Preethi" and "Anitha" as expected. As mongo_1 (Primary) can reach to mongo_2 and mongo_3, the new record got replicated in both the systems. Since mongo_4 and mongo_5 were unreachable from Primary node, the record did not get replicated and db.personal_proj_demo.find() gave a stale data with just the record of "Preethi" from mongo_4 and mongo_5.
 
 Since writes can be only done to Master node, there is no concept of "last write" in Mongo. Whatever is updated to Master node will get replicated in Slave node. Inorder to end the network partition, I created a new VPC peering connection between VPC cmpe281-personal-project-peer and cmpe281-personal-project-1.
 
@@ -664,7 +664,7 @@ cmpe281-personal-project-1 : Public and Private subnets
 
 Creating Peering connection enabled the Master node to talk with all the Slave nodes. 
 
-rs.status() from Primary node, mongo_4 and mongo_5 showed all the nodes as reachable and healthy. db.personal_proj.find() from mongo_4 showed the new record for "Anitha" along with "Preethi" and became consistent with the Primary node. Thus, under network partition, nodes unreachable to Primary node shows stale data. After partition recovery, the unreachable nodes becomes eventually consistent and shows the updated data.
+rs.status() from Primary node, mongo_4 and mongo_5 showed all the nodes as reachable and healthy. db.personal_proj_demo.find() from mongo_4 showed the new record for "Anitha" along with "Preethi" and became consistent with the Primary node. Thus, under network partition, nodes unreachable to Primary node shows stale data. After partition recovery, the unreachable nodes becomes eventually consistent and shows the updated data.
 
 **Mongo DB Design Diagram**
 
