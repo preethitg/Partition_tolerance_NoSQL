@@ -220,11 +220,11 @@ Next task was to create a test network partition. The inter-node communication e
 	From EC2 dashboard choose Security Groups under NETWORK & SECURITY
 	Change Security Group : Riak Personal Project
 
-	Port Range : 8099 ; Source : 0.0.0.0/0, ::/0
-	Port Range : 8087 ; Source : 0.0.0.0/0, ::/0
+	Port Range : 8099 ; Source : 10.0.1.0/24
+	Port Range : 8087 ; Source : 10.0.1.0/24
 	Port Range : 22 ; Source : 0.0.0.0/0, ::/0
 	Port Range : 4369 ; Source : 10.0.1.0/24 (IPv4 CIDR block for Private subnet in AZ us-west-1c)
-	Port Range : 8098 ; Source : 10.0.1.0/24 (IPv4 CIDR block for Private subnet in AZ us-west-1c)
+	Port Range : 8098 ; Source : 10.0.1.0/24, 10.0.0.0/24 (IPv4 CIDR block for Private subnet in AZ us-west-1c)
 	Port Range : 6000 - 7999 ; Source : 10.0.1.0/24 (IPv4 CIDR block for Private subnet in AZ us-west-1c)
 
 	Create a new Security group
@@ -239,11 +239,11 @@ Next task was to create a test network partition. The inter-node communication e
 
 	In Inbound Security group rules, Add new rules
 
-	Port Range : 8099 ; Source : 0.0.0.0/0, ::/0
-	Port Range : 8087 ; Source : 0.0.0.0/0, ::/0
+	Port Range : 8099 ; Source : 10.0.3.0/24
+	Port Range : 8087 ; Source : 10.0.3.0/24
 	Port Range : 22 ; Source : 0.0.0.0/0, ::/0
 	Port Range : 4369 ; Source : 10.0.3.0/24 (IPv4 CIDR block for Private subnet in AZ us-west-1a)
-	Port Range : 8098 ; Source : 10.0.3.0/24 (IPv4 CIDR block for Private subnet in AZ us-west-1a)
+	Port Range : 8098 ; Source : 10.0.3.0/24, 10.0.0.0/24 (IPv4 CIDR block for Private subnet in AZ us-west-1a)
 	Port Range : 6000 - 7999 ; Source : 10.0.3.0/24 (IPv4 CIDR block for Private subnet in AZ us-west-1a)
 
 	Create
@@ -261,11 +261,11 @@ Next, to check how nodes choose the latest data, I changed the value for favorit
 
 Upon GET, I got favorite as "pasta" from Riak4 and Riak5 as they were in same subnet and were able to communicate with each other. Riak1, Riak2 and Riak3 still showed "salad". Now I closed the partition by changing both security group rules to:
 
-	Port Range : 8099 ; Source : 0.0.0.0/0, ::/0
-	Port Range : 8087 ; Source : 0.0.0.0/0, ::/0
+	Port Range : 8099 ; Source : 10.0.3.0/24 , 10.0.1.0/24
+	Port Range : 8087 ; Source : 10.0.3.0/24 , 10.0.1.0/24
 	Port Range : 22 ; Source : 0.0.0.0/0, ::/0
 	Port Range : 4369 ; Source : 10.0.3.0/24 , 10.0.1.0/24
-	Port Range : 8098 ; Source : 10.0.3.0/24 , 10.0.1.0/24
+	Port Range : 8098 ; Source : 10.0.3.0/24 , 10.0.1.0/24, 10.0.0.0/24
 	Port Range : 6000 - 7999 ; Source : 10.0.3.0/24 , 10.0.1.0/24
 
 After this change, **curl -i http://<ip_address_of_riak_node>:8098/buckets/food/keys/favorite** gave me "pasta" in all the nodes. Thus, during network partition recovery, all the nodes took the latest key for favorite ie, the last write and became consistent in their answers.
