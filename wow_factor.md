@@ -23,7 +23,7 @@ Next lets check the capacity. By default, elastic beanstalk creates a single ins
 
 I have changed this to load balancer to increase the number if instances based on my desire. I gave the min capacity as 1 and max capacity as 4.
 
-Coming back to the configuration now, we can see that a classic load balancer has been automatically created. If we check on the events, we can see that an auto scaling group has also been created. We can do many things from elastci beanstalk : send notification to developer, create custom health checks, integrate a backed DB with the application etc.
+Coming back to the configuration now, we can see that a classic load balancer has been automatically created. If we check on the events, we can see that an auto scaling group has also been created. We can do many things from elastic beanstalk : send notification to developer, create custom health checks, integrate a backend DB with the application etc.
 
 Now that ive created an instance, i checked the running instance in my EC2. I could see that a new instance is running.
 A new auto scaling group, security group and load balancer has been created.
