@@ -572,6 +572,15 @@ After initiation, the nodes decide and elect one instance as Master /Primary. Wr
 
 rs.status() is very useful in understanding which nodes are Primary and Secondary. Its also useful in understanding the health condition of the nodes, whether it is reachable or not.
 
+
+![Mongo Design Diagram](22.png)
+
+![Mongo Design Diagram](23.png)
+
+![Mongo Design Diagram](24.png)
+
+![Mongo Design Diagram](25.png)
+
 After the initiation, mongo_5 was elected as Primary node. The default MongoDB configuration is open for anyone to access the databases. Thus I created an admin user from mongo_5 to access the database.
 
 	mongo
@@ -598,12 +607,22 @@ Inorder to test for partition tolerance, create a db "personal_proj_demo" and a 
 	}) 
 
 	db.personal_proj_demo.find()
+	
+![Mongo Design Diagram](26.png)
 
 In order to test if the data has been successfully replicated in secondary nodes, we have to allow query from secondary/replica nodes.
 
 	rs.slaveOk()
 	use personal_proj_demo
 	db.personal_proj_demo.find()
+	
+![Mongo Design Diagram](28.png)
+
+![Mongo Design Diagram](29.png)
+
+![Mongo Design Diagram](30.png)
+
+![Mongo Design Diagram](31.png)
 
 The data was replicated correctly and all secondary nodes showed record for "Preethi". Next i created a network partition by deleting the VPC peering connection.
 
@@ -631,8 +650,12 @@ MongoDB follows Master-Slave configuration. Any writes has to be done to Master 
 	}) 
 
 	db.personal_proj_demo.find()
+	
+![Mongo Design Diagram](32.png)
 
 find() showed the records for "Preethi" and "Anitha" as expected. As mongo_1 (Primary) can reach to mongo_2 and mongo_3, the new record got replicated in both the systems. Since mongo_4 and mongo_5 were unreachable from Primary node, the record did not get replicated and db.personal_proj_demo.find() gave a stale data with just the record of "Preethi" from mongo_4 and mongo_5.
+
+![Mongo Design Diagram](33.png)
 
 Since writes can be only done to Master node, there is no concept of "last write" in Mongo. Whatever is updated to Master node will get replicated in Slave node. Inorder to end the network partition, I created a new VPC peering connection between VPC cmpe281-personal-project-peer and cmpe281-personal-project-1.
 
@@ -665,6 +688,10 @@ cmpe281-personal-project-1 : Public and Private subnets
 Creating Peering connection enabled the Master node to talk with all the Slave nodes. 
 
 rs.status() from Primary node, mongo_4 and mongo_5 showed all the nodes as reachable and healthy. db.personal_proj_demo.find() from mongo_4 showed the new record for "Anitha" along with "Preethi" and became consistent with the Primary node. Thus, under network partition, nodes unreachable to Primary node shows stale data. After partition recovery, the unreachable nodes becomes eventually consistent and shows the updated data.
+
+![Mongo Design Diagram](34.png)
+
+![Mongo Design Diagram](35.png)
 
 **Mongo DB Design Diagram**
 
