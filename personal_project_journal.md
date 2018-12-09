@@ -199,6 +199,16 @@ From the node chosen to join the cluster, perform the following to plan and comm
 
 	sudo riak-admin cluster plan
 	sudo riak-admin cluster commit
+	
+![Riak Design Diagram](2.png)
+
+![Riak Design Diagram](3.png)
+
+![Riak Design Diagram](4.png)
+
+![Riak Design Diagram](5.png)
+
+![Riak Design Diagram](6.png)
 
 This will take few moments to make all the nodes in the cluster valid. To remove a node from a cluster, perform the follwing from the node that has to be removed
 	
@@ -208,10 +218,18 @@ First I tested whether the nodes are able to talk with each other. So i created 
 
 	curl -v -XPUT -d "pizza" \
     http://10.0.1.218:8098/buckets/food/keys/favorite
+    
+![Riak Design Diagram](7.png)
 
 The curl can be tested with the following curl command
 	
 	curl -i http://<ip address of riak node>:8098/buckets/food/keys/favorite
+		
+
+![Riak Design Diagram](8.png)
+
+![Riak Design Diagram](9.png)
+
 
 The test was successfull and I got "pizza" from all the nodes. 
 Next task was to create a test network partition. The inter-node communication error I got in the past gave me the idea to change the security rule such the nodes in one private subnet cannot talk with nodes in another subnet
@@ -248,18 +266,41 @@ Next task was to create a test network partition. The inter-node communication e
 
 	Create
 
-I changed the security groups of all riak instances in AZ us-west-1c to Riak Personal Project and riak instances in AZ us-west-1a to Riak Personal Project SG2. Thus only instances in the same subnet can talk with each other. I stopped and started my riak nodes again. Upon performing sudo riak-admin cluster status from Riak1 I could see that Riak4 and Riak5 nodes were down. I updated the value for key favorite to "salad" from Riak1.
+I changed the security groups of all riak instances in AZ us-west-1c to Riak Personal Project and riak instances in AZ us-west-1a to Riak Personal Project SG2. Thus only instances in the same subnet can talk with each other. I stopped and started my riak nodes again. Upon performing sudo riak-admin cluster status from Riak1 I could see that Riak4 and Riak5 nodes were down. 
+
+![Riak Design Diagram](10.png)
+
+![Riak Design Diagram](11.png)
+
+I updated the value for key favorite to "salad" from Riak1.
 
 	curl -v -XPUT -d "salad" \
     http://10.0.1.218:8098/buckets/food/keys/favorite
 
+![Riak Design Diagram](12.png)
+
 Upon GET, I got favorite as "salad" from Riak1, Riak2 and Riak3 as they were all in same subnet. Riak4 and Riak5 showed me stale data, it showed "pizza" as favorite. 
+
+![Riak Design Diagram](13.png)
+
+![Riak Design Diagram](14.png)
+
+![Riak Design Diagram](15.png)
+
 Next, to check how nodes choose the latest data, I changed the value for favorite as "pasta" from Riak4. Since it was an AP system , Riak4 and Riak5 were available for write. 
 
 	curl -v -XPUT -d "pasta" \
     http://10.0.3.50:8098/buckets/food/keys/favorite
+    
+ ![Riak Design Diagram](16.png)
 
-Upon GET, I got favorite as "pasta" from Riak4 and Riak5 as they were in same subnet and were able to communicate with each other. Riak1, Riak2 and Riak3 still showed "salad". Now I closed the partition by changing both security group rules to:
+Upon GET, I got favorite as "pasta" from Riak4 and Riak5 as they were in same subnet and were able to communicate with each other. Riak1, Riak2 and Riak3 still showed "salad". 
+
+![Riak Design Diagram](17.png)
+
+![Riak Design Diagram](19.png)
+
+Now I closed the partition by changing both security group rules to:
 
 	Port Range : 8099 ; Source : 10.0.3.0/24 , 10.0.1.0/24
 	Port Range : 8087 ; Source : 10.0.3.0/24 , 10.0.1.0/24
@@ -269,6 +310,9 @@ Upon GET, I got favorite as "pasta" from Riak4 and Riak5 as they were in same su
 	Port Range : 6000 - 7999 ; Source : 10.0.3.0/24 , 10.0.1.0/24
 
 After this change, **curl -i http://<ip_address_of_riak_node>:8098/buckets/food/keys/favorite** gave me "pasta" in all the nodes. Thus, during network partition recovery, all the nodes took the latest key for favorite ie, the last write and became consistent in their answers.
+
+
+
 
 **Riak DB Design Diagram**
 
