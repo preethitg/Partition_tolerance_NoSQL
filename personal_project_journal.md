@@ -635,19 +635,32 @@ rs.status() from Primary node, mongo_4 and mongo_5 showed all the nodes as reach
 	
 - What happens to the master node during a partition? 
 
-	During a network partition or even while starting mongo after stopping it in aws, election of primary takes place. The new primary can be our old primary itself , or some other node. It's all decided in runtime. To check which node is master node, we can perform rs.statusOk() form any one of the mongo instances
+	During a network partition or even while starting mongo after stopping it in aws, election of primary takes place. The new primary can be our old primary itself , or some other node. It's all decided in runtime. To check which node is master node, we can perform rs.statusOk() form any one of the mongo instances.
 	
 - Can stale data be read from a slave node during a partition?
 
+	By default, read is allowed only from master or primary node in Mongo. Inorder to read data from secondary, we have to perform rs.slaveOk() command in secondary node. If data is inserted or updated from primary during partition, then with rs.slaveOk() command, we can read stale data from slave nodes.	
+
 - What happens to the system during partition recovery?
+
+	During partition recovery, the data from primary node gets replicated to the slave nodes which were unreachable till then. Thus, slave nodes become eventually consistent with the primary node.
 
 ## Riak AP system test
 
-- How does the system function during normal mode (i.e. no partition) 
+- How does the system function during normal mode (i.e. no partition)
+
+	Riak uses peer to peer communication for data replication. Write and read can be done from any of the instances. Unlike mongodb, we dont have to explicitly perform rs.slaveOk() command to read data from nodes other than coordinator nodes.
+Riak uses HTTP requests for database manipulation.
 
 - What happens to the nodes during a partition? 
 
+	During partition, the partitioned node will be unreachable from rest of the cluster, which can be found using sudo riak-admin cluster status. Since all the nodes are available for read and write, when a write takes place to a node, the value will be replicated in all the nodes that are peered to the written node. Rest of the nodes will then show stale data. 
+
 - Can stale data be read from a node during a partition?
 
+	Yes, stale data can be read from the nodes during a partition if data is updated in a node which is unreachable from the node from which we read.
+
 - What happens to the system during partition recovery?
+
+	During partition recovery, riak makes all the nodes consistent with the last written data "last write" as all the nodes are available for read and write. But, by mentioning few conditions, such as W=3, we can give a constraint that last write is only valid from a node who has minimum of 3 write votes. 
 
