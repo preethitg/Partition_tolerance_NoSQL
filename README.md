@@ -1,4 +1,1 @@
-## cmpe281-tgpreethi
-# CMPE281 - Personal NoSQL Project
-
-This project is aimed to test the partition tolerance of NoSQL database systems.
+## This project is aimed to test the partition tolerance of NoSQL database systems.
